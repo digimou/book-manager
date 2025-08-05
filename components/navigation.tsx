@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@/lib/hooks/use-auth";
 import { USER_ROLES, ROUTES } from "@/lib/constants";
+import toast from "react-hot-toast";
 
 export default function Navigation() {
   const { data: session } = useSession();
@@ -13,8 +14,10 @@ export default function Navigation() {
   const handleLogout = async () => {
     try {
       await logoutMutation.mutateAsync();
+      toast.success("Logged out successfully!");
       window.location.href = ROUTES.LOGIN;
     } catch (error) {
+      toast.error("Logout failed. Please try again.");
       console.error("Logout failed:", error);
     }
   };

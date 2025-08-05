@@ -116,7 +116,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {(session.user as unknown as { role: string }).role === USER_ROLES.USER && (
+        {(session.user as unknown as { role: string }).role ===
+          USER_ROLES.USER && (
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium text-gray-600">
@@ -133,7 +134,8 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {(session.user as unknown as { role: string }).role === USER_ROLES.USER && (
+        {(session.user as unknown as { role: string }).role ===
+          USER_ROLES.USER && (
           <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
@@ -151,15 +153,13 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {(session.user as unknown as { role: string }).role === USER_ROLES.ADMIN && (
+        {(session.user as unknown as { role: string }).role ===
+          USER_ROLES.ADMIN && (
           <Card>
             <CardHeader>
               <CardTitle>Admin Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Link href={`${ROUTES.BOOKS}?action=add`}>
-                <Button className="w-full">Add New Book</Button>
-              </Link>
               <Link href={ROUTES.BOOKS}>
                 <Button variant="outline" className="w-full">
                   Manage Books

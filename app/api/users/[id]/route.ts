@@ -1,24 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { z } from "zod";
-import { hashPassword } from "@/lib/utils/server";
-import { USER_ROLES, ERROR_MESSAGES, VALIDATION } from "@/lib/constants";
 import { auth } from "@/lib/auth";
+import { USER_ROLES, ERROR_MESSAGES, VALIDATION } from "@/lib/constants";
+import { z } from "zod";
 
-const registerSchema = z.object({
+const updateUserSchema = z.object({
   name: z
     .string()
     .min(VALIDATION.MIN_NAME_LENGTH, { message: "Name is required" }),
   email: z.string().email({ message: "Invalid email address" }),
-  password: z.string().min(VALIDATION.MIN_PASSWORD_LENGTH, {
-    message: "Password must be at least 6 characters",
-  }),
-  role: z
-    .enum([USER_ROLES.USER, USER_ROLES.BOOKKEEPER, USER_ROLES.ADMIN])
-    .default(USER_ROLES.USER),
+  role: z.enum([USER_ROLES.USER, USER_ROLES.BOOKKEEPER, USER_ROLES.ADMIN]),
 });
 
-export async function POST(request: NextRequest) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     // Check authentication
     const session = await auth();
@@ -34,49 +31,57 @@ export async function POST(request: NextRequest) {
     const userRole = (session.user as unknown as { role: string }).role;
     if (userRole !== USER_ROLES.ADMIN) {
       return NextResponse.json(
-        { error: "Only administrators can create users" },
+        { error: "Only administrators can update users" },
         { status: 403 }
       );
     }
 
+    const { id } = await params;
     const body = await request.json();
-    const validatedData = registerSchema.parse(body);
+    const validatedData = updateUserSchema.parse(body);
 
-    // Check if user already exists
+    // Check if user exists
     const existingUser = await db.user.findUnique({
-      where: { email: validatedData.email },
+      where: { id },
     });
 
-    if (existingUser) {
+    if (!existingUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Check if email is already taken by another user
+    const emailExists = await db.user.findFirst({
+      where: {
+        email: validatedData.email,
+        id: { not: id },
+      },
+    });
+
+    if (emailExists) {
       return NextResponse.json(
-        { error: ERROR_MESSAGES.USER_ALREADY_EXISTS },
+        { error: "Email is already taken by another user" },
         { status: 400 }
       );
     }
 
-    // Hash password
-    const hashedPassword = await hashPassword(validatedData.password);
-
-    // Create user
-    const user = await db.user.create({
+    // Update user
+    const updatedUser = await db.user.update({
+      where: { id },
       data: {
         name: validatedData.name,
         email: validatedData.email,
-        password: hashedPassword,
         role: validatedData.role,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
       },
     });
 
-    // Remove password from response
-    const userResponse = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      createdAt: user.createdAt,
-    };
-
-    return NextResponse.json({ user: userResponse }, { status: 201 });
+    return NextResponse.json(updatedUser);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -84,7 +89,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.error("Error registering user:", error);
+    console.error("Error updating user:", error);
     return NextResponse.json(
       { error: ERROR_MESSAGES.INTERNAL_SERVER_ERROR },
       { status: 500 }

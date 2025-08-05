@@ -1,33 +1,27 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLogin } from "@/lib/hooks/use-auth";
 import { VALIDATION, ROUTES } from "@/lib/constants";
+import toast from "react-hot-toast";
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z
-    .string()
-    .min(
-      VALIDATION.MIN_PASSWORD_LENGTH,
-      "Password must be at least 6 characters"
-    ),
+  email: z.string().email({ message: "Invalid email address" }),
+  password: z.string().min(VALIDATION.MIN_PASSWORD_LENGTH, {
+    message: "Password must be at least 6 characters",
+  }),
 });
 
 type LoginData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-
   const loginMutation = useLogin();
 
   const form = useForm<LoginData>({
@@ -39,13 +33,12 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginData) => {
-    setError(null);
-
     try {
       await loginMutation.mutateAsync(data);
+      toast.success("Login successful!");
       router.push(ROUTES.DASHBOARD);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Login failed");
+      toast.error(error instanceof Error ? error.message : "Login failed");
     }
   };
 
@@ -105,12 +98,6 @@ export default function LoginPage() {
                   </p>
                 )}
               </div>
-
-              {error && (
-                <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
-                  {error}
-                </div>
-              )}
 
               <Button
                 type="submit"
