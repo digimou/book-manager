@@ -39,6 +39,10 @@ import {
   Key,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  isAdmin as isUserAdmin,
+  isBookkeeper as isUserBookkeeper,
+} from "@/lib/utils/client";
 
 const createUserSchema = z.object({
   name: z
@@ -127,11 +131,10 @@ export default function UsersPage() {
     return null;
   }
 
-  const userRole = (session.user as { role: string }).role;
-  const isAdmin = userRole === USER_ROLES.ADMIN;
-  const isBookkeeper = userRole === USER_ROLES.BOOKKEEPER;
+  const userIsAdmin = isUserAdmin(session);
+  const userIsBookkeeper = isUserBookkeeper(session);
 
-  if (!isAdmin && !isBookkeeper) {
+  if (!userIsAdmin && !userIsBookkeeper) {
     router.push("/dashboard");
     return null;
   }
@@ -235,10 +238,10 @@ export default function UsersPage() {
           <div className="flex items-center gap-3">
             <Users className="h-8 w-8 text-blue-600" />
             <h1 className="text-3xl font-bold text-gray-900">
-              {isAdmin ? "User Management" : "Bookkeeper Directory"}
+              {userIsAdmin ? "User Management" : "Bookkeeper Directory"}
             </h1>
           </div>
-          {isAdmin && (
+          {userIsAdmin && (
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogTrigger asChild>
                 <Button className="flex items-center gap-2">
@@ -413,7 +416,7 @@ export default function UsersPage() {
                       <Badge variant={getRoleBadgeVariant(user.role)}>
                         {user.role}
                       </Badge>
-                      {isAdmin && (
+                      {userIsAdmin && (
                         <div className="flex items-center gap-1">
                           <Button
                             variant="ghost"
@@ -462,7 +465,7 @@ export default function UsersPage() {
                   No users found
                 </h3>
                 <p className="text-gray-600">
-                  {isAdmin
+                  {userIsAdmin
                     ? "Get started by creating your first user."
                     : "No other bookkeepers found in the system."}
                 </p>

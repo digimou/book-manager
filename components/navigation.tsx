@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@/lib/hooks/use-auth";
-import { USER_ROLES, ROUTES } from "@/lib/constants";
+import { ROUTES } from "@/lib/constants";
+import { canManageUsers, getUserDisplayName } from "@/lib/utils/client";
 import toast from "react-hot-toast";
 
 export default function Navigation() {
@@ -48,8 +49,7 @@ export default function Navigation() {
                 >
                   Books
                 </Link>
-                {(session.user as unknown as { role: string }).role ===
-                  USER_ROLES.ADMIN && (
+                {canManageUsers(session) && (
                   <Link
                     href={ROUTES.USERS}
                     className="text-gray-700 hover:text-gray-900"
@@ -65,7 +65,7 @@ export default function Navigation() {
             {session ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-700">
-                  Welcome, {session.user?.name || session.user?.email}
+                  Welcome, {getUserDisplayName(session)}
                 </span>
                 <Button
                   variant="outline"

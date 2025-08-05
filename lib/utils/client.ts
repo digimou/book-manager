@@ -111,3 +111,74 @@ export function validatePassword(password: string): {
     errors,
   };
 }
+
+import { Session } from "next-auth";
+import { USER_ROLES } from "@/lib/constants";
+
+// Extract user role from session
+export function getUserRole(session: Session | null): string | null {
+  if (!session?.user) return null;
+  return (session.user as unknown as { role: string }).role;
+}
+
+// Extract user ID from session
+export function getUserId(session: Session | null): string | null {
+  if (!session?.user) return null;
+  return session.user.id || null;
+}
+
+// Check if user is admin
+export function isAdmin(session: Session | null): boolean {
+  const role = getUserRole(session);
+  return role === USER_ROLES.ADMIN;
+}
+
+// Check if user is bookkeeper
+export function isBookkeeper(session: Session | null): boolean {
+  const role = getUserRole(session);
+  return role === USER_ROLES.BOOKKEEPER;
+}
+
+// Check if user is regular user
+export function isUser(session: Session | null): boolean {
+  const role = getUserRole(session);
+  return role === USER_ROLES.USER;
+}
+
+// Check if user is owner of a resource
+export function isOwner(session: Session | null, ownerId: string): boolean {
+  const userId = getUserId(session);
+  return userId === ownerId;
+}
+
+// Check if user can edit (owner or admin)
+export function canEdit(session: Session | null, ownerId: string): boolean {
+  return isOwner(session, ownerId) || isAdmin(session);
+}
+
+// Check if user can transfer (owner or admin)
+export function canTransfer(session: Session | null, ownerId: string): boolean {
+  return isOwner(session, ownerId) || isAdmin(session);
+}
+
+// Check if user can add books (bookkeeper or admin)
+export function canAddBooks(session: Session | null): boolean {
+  return isBookkeeper(session) || isAdmin(session);
+}
+
+// Check if user can manage users (admin only)
+export function canManageUsers(session: Session | null): boolean {
+  return isAdmin(session);
+}
+
+// Get user display name
+export function getUserDisplayName(session: Session | null): string {
+  if (!session?.user) return "Unknown User";
+  return session.user.name || session.user.email || "Unknown User";
+}
+
+// Get user email
+export function getUserEmail(session: Session | null): string | null {
+  if (!session?.user) return null;
+  return session.user.email || null;
+}

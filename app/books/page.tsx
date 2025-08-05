@@ -5,10 +5,10 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBooks } from "@/lib/hooks/use-books";
-import { USER_ROLES } from "@/lib/constants";
 import { AddBookModal } from "@/components/books/add-book-modal";
 import { EditBookModal } from "@/components/books/edit-book-modal";
 import { TransferOwnershipModal } from "@/components/books/transfer-ownership-modal";
+import { canAddBooks, canEdit, canTransfer } from "@/lib/utils/client";
 
 export default function BooksPage() {
   const { data: session, status } = useSession();
@@ -36,12 +36,6 @@ export default function BooksPage() {
   if (!session?.user) {
     redirect("/auth/login");
   }
-
-  const userRole = (session.user as unknown as { role: string }).role;
-  const isAdmin = userRole === USER_ROLES.ADMIN;
-  const isBookkeeper = userRole === USER_ROLES.BOOKKEEPER;
-  const canAddBooks = isAdmin || isBookkeeper;
-  const currentUserId = session.user.id;
 
   if (isLoading) {
     return (
@@ -82,7 +76,7 @@ export default function BooksPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Books</h1>
-        {canAddBooks && <AddBookModal onSuccess={() => refetch()} />}
+        {canAddBooks(session) && <AddBookModal onSuccess={() => refetch()} />}
       </div>
 
       {books.length === 0 ? (
@@ -91,7 +85,7 @@ export default function BooksPage() {
             No books found
           </h3>
           <p className="text-gray-600">
-            {canAddBooks
+            {canAddBooks(session)
               ? "Start by adding some books to the library."
               : "No books are available at the moment."}
           </p>
@@ -99,10 +93,6 @@ export default function BooksPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {books.map((book) => {
-            const isOwner = book.ownerId === currentUserId;
-            const canEdit = isOwner || isAdmin; // Owner or admin can edit
-            const canTransfer = isOwner || isAdmin; // Owner or admin can transfer
-
             return (
               <Card key={book.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
@@ -116,13 +106,13 @@ export default function BooksPage() {
                       </p>
                     </div>
                     <div className="flex gap-1">
-                      {canEdit && (
+                      {canEdit(session, book.ownerId) && (
                         <EditBookModal
                           book={book}
                           onSuccess={() => refetch()}
                         />
                       )}
-                      {canTransfer && (
+                      {canTransfer(session, book.ownerId) && (
                         <TransferOwnershipModal
                           book={book}
                           onSuccess={() => refetch()}

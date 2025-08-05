@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { USER_ROLES, ERROR_MESSAGES } from "@/lib/constants";
+import { USER_ROLES } from "@/lib/constants";
 
 // Reusable authentication check
 export async function requireAuth() {
@@ -23,12 +23,10 @@ export async function requireAuth() {
 // Reusable admin check
 export async function requireAdmin() {
   const authResult = await requireAuth();
+  if (authResult.error) return authResult;
 
-  if (authResult.error) {
-    return authResult;
-  }
-
-  const userRole = (authResult.session!.user as { role: string }).role;
+  const userRole = (authResult.session!.user as unknown as { role: string })
+    .role;
   if (userRole !== USER_ROLES.ADMIN) {
     return {
       error: NextResponse.json(
@@ -42,21 +40,93 @@ export async function requireAdmin() {
   return authResult;
 }
 
-// Reusable validation with error handling
+// Reusable role check
+export async function requireRole(allowedRoles: string[]) {
+  const authResult = await requireAuth();
+  if (authResult.error) return authResult;
+
+  const userRole = (authResult.session!.user as unknown as { role: string })
+    .role;
+  if (!allowedRoles.includes(userRole)) {
+    return {
+      error: NextResponse.json(
+        { error: `Only ${allowedRoles.join(", ")} can perform this action` },
+        { status: 403 }
+      ),
+      session: null,
+    };
+  }
+
+  return authResult;
+}
+
+// Extract user role from session
+export function getUserRole(session: {
+  user?: { id?: string; role?: string };
+}): string {
+  return (session.user as unknown as { role: string }).role;
+}
+
+// Extract user ID from session
+export function getUserId(session: {
+  user?: { id?: string; role?: string };
+}): string {
+  return session.user?.id ?? "";
+}
+
+// Check if user is admin
+export function isAdmin(session: {
+  user?: { id?: string; role?: string };
+}): boolean {
+  return getUserRole(session) === USER_ROLES.ADMIN;
+}
+
+// Check if user is bookkeeper
+export function isBookkeeper(session: {
+  user?: { id?: string; role?: string };
+}): boolean {
+  return getUserRole(session) === USER_ROLES.BOOKKEEPER;
+}
+
+// Check if user is owner of a resource
+export function isOwner(
+  session: { user?: { id?: string; role?: string } },
+  ownerId: string
+): boolean {
+  return getUserId(session) === ownerId;
+}
+
+// Check if user can edit (owner or admin)
+export function canEdit(
+  session: { user?: { id?: string; role?: string } },
+  ownerId: string
+): boolean {
+  return isOwner(session, ownerId) || isAdmin(session);
+}
+
+// Check if user can transfer (owner or admin)
+export function canTransfer(
+  session: { user?: { id?: string; role?: string } },
+  ownerId: string
+): boolean {
+  return isOwner(session, ownerId) || isAdmin(session);
+}
+
+// Reusable request validation
 export async function validateRequest<T>(
   request: NextRequest,
   schema: z.ZodSchema<T>
 ): Promise<{ data: T | null; error: NextResponse | null }> {
   try {
     const body = await request.json();
-    const data = schema.parse(body);
-    return { data, error: null };
+    const validatedData = schema.parse(body);
+    return { data: validatedData, error: null };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return {
         data: null,
         error: NextResponse.json(
-          { error: ERROR_MESSAGES.VALIDATION_ERROR, details: error.issues },
+          { error: "Invalid request data", details: error.issues },
           { status: 400 }
         ),
       };
@@ -64,14 +134,14 @@ export async function validateRequest<T>(
     return {
       data: null,
       error: NextResponse.json(
-        { error: ERROR_MESSAGES.INTERNAL_SERVER_ERROR },
-        { status: 500 }
+        { error: "Invalid request format" },
+        { status: 400 }
       ),
     };
   }
 }
 
-// Reusable error response
+// Reusable error responses
 export function createErrorResponse(
   message: string,
   status: number = 500
@@ -79,7 +149,6 @@ export function createErrorResponse(
   return NextResponse.json({ error: message }, { status });
 }
 
-// Reusable success response
 export function createSuccessResponse<T>(
   data: T,
   status: number = 200
@@ -87,25 +156,14 @@ export function createSuccessResponse<T>(
   return NextResponse.json(data, { status });
 }
 
-// Reusable pagination helper
+// Reusable pagination helpers
 export function getPaginationParams(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "10");
-  const skip = (page - 1) * limit;
-
-  return { page, limit, skip };
+  return { page, limit, skip: (page - 1) * limit };
 }
 
-// Reusable search params helper
 export function getSearchParams(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const search = searchParams.get("search");
-  const genre = searchParams.get("genre");
-  const status = searchParams.get("status");
-  const userId = searchParams.get("userId");
-  const sortBy = searchParams.get("sortBy") || "createdAt";
-  const sortOrder = searchParams.get("sortOrder") || "desc";
-
-  return { search, genre, status, userId, sortBy, sortOrder };
+  return request.nextUrl.searchParams;
 }

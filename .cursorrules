@@ -15,6 +15,7 @@ Always user DRY and single reponsibility priciple.
 - Always type function parameters and return values
 - Use utility types like `Partial<T>`, `Pick<T, K>`, `Omit<T, K>`
 - Use `as const` for literal types when needed
+- any type should not be used
 
 ### React & Next.js
 - Use functional components with hooks
@@ -278,7 +279,7 @@ export function LoginForm() {
 - Tailwind CSS for styling
 - Prisma for database operations
 - React Hook Form + Zod for forms
-- HeroUI and Radix UI for components
+- Shadcn and Radix UI for components
 - ESLint for code quality
 - pnpm for package management
 

@@ -6,7 +6,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashboardStats } from "@/lib/hooks/use-dashboard";
-import { USER_ROLES, ROUTES } from "@/lib/constants";
+import { ROUTES } from "@/lib/constants";
+import { isAdmin, isUser } from "@/lib/utils/client";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -116,8 +117,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {(session.user as unknown as { role: string }).role ===
-          USER_ROLES.USER && (
+        {isUser(session) && (
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium text-gray-600">
@@ -134,8 +134,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {(session.user as unknown as { role: string }).role ===
-          USER_ROLES.USER && (
+        {isUser(session) && (
           <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
@@ -152,9 +151,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         )}
-
-        {(session.user as unknown as { role: string }).role ===
-          USER_ROLES.ADMIN && (
+        {isAdmin(session) && (
           <Card>
             <CardHeader>
               <CardTitle>Admin Actions</CardTitle>
