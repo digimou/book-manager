@@ -73,18 +73,7 @@ export default function Navigation() {
                   {logoutMutation.isPending ? "Logging out..." : "Logout"}
                 </Button>
               </div>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <Link href={ROUTES.LOGIN}>
-                  <Button variant="outline" size="sm">
-                    Login
-                  </Button>
-                </Link>
-                <Link href={ROUTES.REGISTER}>
-                  <Button size="sm">Register</Button>
-                </Link>
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { hashPassword } from "@/lib/utils/server";
 import { USER_ROLES, ERROR_MESSAGES, VALIDATION } from "@/lib/constants";
+import { auth } from "@/lib/auth";
 
 const registerSchema = z.object({
   name: z.string().min(VALIDATION.MIN_NAME_LENGTH, "Name is required"),
@@ -20,6 +21,25 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is admin
+    const userRole = (session.user as unknown as { role: string }).role;
+    if (userRole !== USER_ROLES.ADMIN) {
+      return NextResponse.json(
+        { error: "Only administrators can create users" },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const validatedData = registerSchema.parse(body);
 
