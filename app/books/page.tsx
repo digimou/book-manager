@@ -8,6 +8,7 @@ import { useBooks } from "@/lib/hooks/use-books";
 import { AddBookModal } from "@/components/books/add-book-modal";
 import { EditBookModal } from "@/components/books/edit-book-modal";
 import { TransferOwnershipModal } from "@/components/books/transfer-ownership-modal";
+import { BookAuditSheet } from "@/components/books/book-audit-sheet";
 import { canAddBooks, canEdit, canTransfer } from "@/lib/utils/client";
 
 export default function BooksPage() {
@@ -118,6 +119,7 @@ export default function BooksPage() {
                           onSuccess={() => refetch()}
                         />
                       )}
+                      <BookAuditSheet book={book} />
                     </div>
                   </div>
                 </CardHeader>
