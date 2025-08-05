@@ -26,7 +26,7 @@ const registerSchema = z.object({
       VALIDATION.MIN_PASSWORD_LENGTH,
       "Password must be at least 6 characters"
     ),
-  role: z.enum([USER_ROLES.USER, USER_ROLES.LIBRARIAN, USER_ROLES.ADMIN]),
+  role: z.enum([USER_ROLES.USER, USER_ROLES.BOOKKEEPER, USER_ROLES.ADMIN]),
 });
 
 type RegisterData = z.infer<typeof registerSchema>;
@@ -162,7 +162,7 @@ export default function RegisterPage() {
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value={USER_ROLES.USER}>User</option>
-                  <option value={USER_ROLES.LIBRARIAN}>Librarian</option>
+                  <option value={USER_ROLES.BOOKKEEPER}>Bookkeeper</option>
                   <option value={USER_ROLES.ADMIN}>Admin</option>
                 </select>
                 {form.formState.errors.role && (

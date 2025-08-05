@@ -33,14 +33,14 @@ async function main() {
     },
   });
 
-  // Librarian user
-  const librarianPassword = await hashPassword("librarian123");
-  const librarian = await prisma.user.create({
+  // Bookkeeper user
+  const bookkeeperPassword = await hashPassword("bookkeeper123");
+  const bookkeeper = await prisma.user.create({
     data: {
-      name: "Librarian User",
-      email: "librarian@bookmanager.com",
-      password: librarianPassword,
-      role: USER_ROLES.LIBRARIAN,
+      name: "Bookkeeper User",
+      email: "bookkeeper@bookmanager.com",
+      password: bookkeeperPassword,
+      role: USER_ROLES.BOOKKEEPER,
     },
   });
 
@@ -270,7 +270,7 @@ async function main() {
   console.log("\n📋 Sample Users Created:");
   console.log(`👑 Admin: admin@bookmanager.com (password: admin123)`);
   console.log(
-    `📚 Librarian: librarian@bookmanager.com (password: librarian123)`
+    `📚 Bookkeeper: bookkeeper@bookmanager.com (password: bookkeeper123)`
   );
   console.log(`👤 User: user@bookmanager.com (password: user123)`);
   console.log(`👤 User: john@bookmanager.com (password: user123)`);

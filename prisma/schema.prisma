@@ -113,7 +113,7 @@ model OTP {
 
 enum UserRole {
   ADMIN
-  LIBRARIAN
+  BOOKKEEPER
   USER
 }
 

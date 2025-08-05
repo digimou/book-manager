@@ -90,10 +90,10 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (
       !session?.user ||
-      ![USER_ROLES.ADMIN, USER_ROLES.LIBRARIAN].includes(
+      ![USER_ROLES.ADMIN, USER_ROLES.BOOKKEEPER].includes(
         (session.user as unknown as { role: string }).role as
           | "ADMIN"
-          | "LIBRARIAN"
+          | "BOOKKEEPER"
       )
     ) {
       return NextResponse.json(
@@ -194,10 +194,10 @@ export async function PUT(request: NextRequest) {
     const session = await auth();
     if (
       !session?.user ||
-      ![USER_ROLES.ADMIN, USER_ROLES.LIBRARIAN].includes(
+      ![USER_ROLES.ADMIN, USER_ROLES.BOOKKEEPER].includes(
         (session.user as unknown as { role: string }).role as
           | "ADMIN"
-          | "LIBRARIAN"
+          | "BOOKKEEPER"
       )
     ) {
       return NextResponse.json(

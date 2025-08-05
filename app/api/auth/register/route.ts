@@ -14,7 +14,7 @@ const registerSchema = z.object({
       "Password must be at least 6 characters"
     ),
   role: z
-    .enum([USER_ROLES.USER, USER_ROLES.LIBRARIAN, USER_ROLES.ADMIN])
+    .enum([USER_ROLES.USER, USER_ROLES.BOOKKEEPER, USER_ROLES.ADMIN])
     .default(USER_ROLES.USER),
 });
 
