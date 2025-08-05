@@ -89,12 +89,31 @@ export const baseBookGenreSchema = z.enum([
   BOOK_GENRES.OTHER,
 ]);
 
+// Custom date validation for date input
+const dateSchema = z
+  .string()
+  .min(1, { message: "Publication date is required" })
+  .refine(
+    (value) => {
+      // Check if it's a valid date format (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(value)) {
+        return false;
+      }
+
+      // Check if it's a valid date
+      const date = new Date(value);
+      return !isNaN(date.getTime());
+    },
+    { message: "Please enter a valid publication date" }
+  );
+
 export const createBookSchema = z.object({
   title: baseBookTitleSchema,
   author: baseBookAuthorSchema,
   isbn: baseBookIsbnSchema,
   genre: baseBookGenreSchema,
-  publicationDate: z.string().datetime(),
+  publicationDate: dateSchema,
   description: z.string().optional(),
   coverImage: z.string().optional(),
   totalCopies: z.number().min(VALIDATION.MIN_BOOK_COPIES, {
@@ -107,7 +126,7 @@ export const updateBookSchema = z.object({
   author: baseBookAuthorSchema.optional(),
   isbn: baseBookIsbnSchema.optional(),
   genre: baseBookGenreSchema.optional(),
-  publicationDate: z.string().datetime().optional(),
+  publicationDate: dateSchema.optional(),
   description: z.string().optional(),
   coverImage: z.string().optional(),
   totalCopies: z

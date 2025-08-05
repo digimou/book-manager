@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 interface FormFieldProps {
   name: string;
   label: string;
-  type?: "text" | "email" | "password" | "number";
+  type?: "text" | "email" | "password" | "number" | "datetime-local" | "date";
   placeholder?: string;
   required?: boolean;
   className?: string;

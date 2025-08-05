@@ -2,15 +2,15 @@
 
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBooks } from "@/lib/hooks/use-books";
-import { USER_ROLES, ROUTES } from "@/lib/constants";
+import { USER_ROLES } from "@/lib/constants";
+import { AddBookModal } from "@/components/books/add-book-modal";
 
 export default function BooksPage() {
   const { data: session, status } = useSession();
-  const { data: booksData, isLoading, error } = useBooks();
+  const { data: booksData, isLoading, error, refetch } = useBooks();
 
   if (status === "loading") {
     return (
@@ -35,8 +35,10 @@ export default function BooksPage() {
     redirect("/auth/login");
   }
 
-  const isAdmin =
-    (session.user as unknown as { role: string }).role === USER_ROLES.ADMIN;
+  const userRole = (session.user as unknown as { role: string }).role;
+  const isAdmin = userRole === USER_ROLES.ADMIN;
+  const isBookkeeper = userRole === USER_ROLES.BOOKKEEPER;
+  const canAddBooks = isAdmin || isBookkeeper;
 
   if (isLoading) {
     return (
@@ -77,11 +79,7 @@ export default function BooksPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Books</h1>
-        {isAdmin && (
-          <Link href={`${ROUTES.BOOKS}?action=add`}>
-            <Button>Add Book</Button>
-          </Link>
-        )}
+        {canAddBooks && <AddBookModal onSuccess={() => refetch()} />}
       </div>
 
       {books.length === 0 ? (
@@ -90,7 +88,7 @@ export default function BooksPage() {
             No books found
           </h3>
           <p className="text-gray-600">
-            {isAdmin
+            {canAddBooks
               ? "Start by adding some books to the library."
               : "No books are available at the moment."}
           </p>

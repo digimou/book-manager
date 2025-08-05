@@ -1,51 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { z } from "zod";
 import { generateRFIDTag } from "@/lib/utils/server";
-import {
-  BOOK_GENRES,
-  ISSUE_STATUS,
-  USER_ROLES,
-  ERROR_MESSAGES,
-  PAGINATION,
-  VALIDATION,
-} from "@/lib/constants";
-
-const bookSchema = z.object({
-  title: z.string().min(VALIDATION.MIN_NAME_LENGTH, "Title is required"),
-  author: z.string().min(VALIDATION.MIN_NAME_LENGTH, "Author is required"),
-  isbn: z.string().min(VALIDATION.MIN_NAME_LENGTH, "ISBN is required"),
-  genre: z.enum([
-    BOOK_GENRES.FICTION,
-    BOOK_GENRES.NON_FICTION,
-    BOOK_GENRES.SCIENCE_FICTION,
-    BOOK_GENRES.MYSTERY,
-    BOOK_GENRES.ROMANCE,
-    BOOK_GENRES.THRILLER,
-    BOOK_GENRES.BIOGRAPHY,
-    BOOK_GENRES.HISTORY,
-    BOOK_GENRES.SCIENCE,
-    BOOK_GENRES.TECHNOLOGY,
-    BOOK_GENRES.PHILOSOPHY,
-    BOOK_GENRES.RELIGION,
-    BOOK_GENRES.ART,
-    BOOK_GENRES.MUSIC,
-    BOOK_GENRES.TRAVEL,
-    BOOK_GENRES.COOKING,
-    BOOK_GENRES.HEALTH,
-    BOOK_GENRES.EDUCATION,
-    BOOK_GENRES.CHILDREN,
-    BOOK_GENRES.YOUNG_ADULT,
-    BOOK_GENRES.OTHER,
-  ]),
-  publicationDate: z.string().datetime(),
-  description: z.string().optional(),
-  coverImage: z.string().optional(),
-  totalCopies: z
-    .number()
-    .min(VALIDATION.MIN_BOOK_COPIES, "At least 1 copy is required"),
-});
+import { USER_ROLES, ERROR_MESSAGES, PAGINATION } from "@/lib/constants";
+import { createBookSchema } from "@/lib/schemas";
 
 export async function GET(request: NextRequest) {
   try {
@@ -92,7 +51,7 @@ export async function GET(request: NextRequest) {
       include: {
         owner: { select: { id: true, name: true, email: true } },
         bookIssues: {
-          where: { status: ISSUE_STATUS.ISSUED },
+          where: { status: "ISSUED" },
           include: { user: { select: { name: true, email: true } } },
         },
       },
@@ -142,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validatedData = bookSchema.parse(body);
+    const validatedData = createBookSchema.parse(body);
 
     const existingBook = await db.book.findUnique({
       where: { isbn: validatedData.isbn },
@@ -155,45 +114,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine the owner - if admin creates, assign to first bookkeeper, otherwise use the creator
-    let ownerId: string;
-    if (userRole === USER_ROLES.ADMIN) {
-      const firstBookkeeper = await db.user.findFirst({
-        where: { role: USER_ROLES.BOOKKEEPER },
-      });
-      if (!firstBookkeeper) {
-        return NextResponse.json(
-          { error: "No bookkeeper found to assign ownership" },
-          { status: 400 }
-        );
-      }
-      ownerId = firstBookkeeper.id;
-    } else {
-      ownerId = session.user.id as string;
+    // Get the user ID from the session
+    const ownerId = session.user.id;
+
+    // Validate that we have a valid ownerId
+    if (!ownerId) {
+      return NextResponse.json(
+        { error: "Unable to determine book owner" },
+        { status: 400 }
+      );
     }
 
-    const book = await db.book.create({
-      data: {
-        ...validatedData,
-        rfidTag: generateRFIDTag(),
-        publicationDate: new Date(validatedData.publicationDate),
-        availableCopies: validatedData.totalCopies,
-        ownerId,
-      },
+    // Convert date format to ISO string for database
+    const publicationDate = new Date(
+      validatedData.publicationDate + "T00:00:00"
+    ).toISOString();
+
+    // Use a transaction to ensure both book and audit record are created together
+    const result = await db.$transaction(async (tx) => {
+      // Create the book
+      const book = await tx.book.create({
+        data: {
+          title: validatedData.title,
+          author: validatedData.author,
+          isbn: validatedData.isbn,
+          genre: validatedData.genre,
+          publicationDate: new Date(publicationDate),
+          description: validatedData.description,
+          coverImage: validatedData.coverImage,
+          totalCopies: validatedData.totalCopies,
+          rfidTag: generateRFIDTag(),
+          availableCopies: validatedData.totalCopies,
+          ownerId,
+        },
+      });
+
+      // Create initial ownership audit record
+      await tx.bookOwnershipAudit.create({
+        data: {
+          bookId: book.id,
+          fromOwnerId: null, // Initial assignment
+          toOwnerId: ownerId,
+          performedById: ownerId, // Use the same owner ID
+          notes: "Initial book creation and ownership assignment",
+        },
+      });
+
+      return book;
     });
 
-    // Create initial ownership audit record
-    await db.bookOwnershipAudit.create({
-      data: {
-        bookId: book.id,
-        fromOwnerId: null, // Initial assignment
-        toOwnerId: ownerId,
-        performedById: session.user.id as string,
-        notes: "Initial book creation and ownership assignment",
-      },
-    });
-
-    return NextResponse.json({ book }, { status: 201 });
+    return NextResponse.json({ book: result }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
