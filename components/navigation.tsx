@@ -13,7 +13,7 @@ export default function Navigation() {
   const handleLogout = async () => {
     try {
       await logoutMutation.mutateAsync();
-      window.location.href = ROUTES.HOME;
+      window.location.href = ROUTES.LOGIN;
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -25,7 +25,7 @@ export default function Navigation() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
             <Link
-              href={ROUTES.HOME}
+              href={session ? ROUTES.DASHBOARD : ROUTES.HOME}
               className="text-xl font-bold text-gray-900"
             >
               Book Manager
@@ -45,7 +45,8 @@ export default function Navigation() {
                 >
                   Books
                 </Link>
-                {(session.user as unknown as { role: string }).role === USER_ROLES.ADMIN && (
+                {(session.user as unknown as { role: string }).role ===
+                  USER_ROLES.ADMIN && (
                   <Link
                     href={ROUTES.USERS}
                     className="text-gray-700 hover:text-gray-900"

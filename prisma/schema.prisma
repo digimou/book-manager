@@ -15,7 +15,7 @@ datasource db {
 }
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String  @id @default(ulid())
   userId            String
   type              String
   provider          String
@@ -34,7 +34,7 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id @default(ulid())
   sessionToken String   @unique
   userId       String
   expires      DateTime
@@ -52,9 +52,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts   Account[]
-  sessions   Session[]
-  bookIssues BookIssue[]
+  accounts                Account[]
+  sessions                Session[]
+  bookIssues              BookIssue[]
+  ownedBooks              Book[]               @relation("BookOwner")
+  ownershipAudits         BookOwnershipAudit[] @relation("AuditPerformer")
+  previousOwnershipAudits BookOwnershipAudit[] @relation("PreviousOwner")
+  newOwnershipAudits      BookOwnershipAudit[] @relation("NewOwner")
 }
 
 model VerificationToken {
@@ -66,7 +70,7 @@ model VerificationToken {
 }
 
 model Book {
-  id              String     @id @default(cuid())
+  id              String     @id @default(ulid())
   title           String
   author          String
   isbn            String     @unique
@@ -78,14 +82,17 @@ model Book {
   totalCopies     Int        @default(1)
   availableCopies Int        @default(1)
   status          BookStatus @default(AVAILABLE)
+  ownerId         String // ID of the bookkeeper who owns this book
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  bookIssues BookIssue[]
+  owner           User                 @relation("BookOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  bookIssues      BookIssue[]
+  ownershipAudits BookOwnershipAudit[]
 }
 
 model BookIssue {
-  id         String      @id @default(cuid())
+  id         String      @id @default(ulid())
   bookId     String
   userId     String
   issueDate  DateTime    @default(now())
@@ -109,6 +116,21 @@ model OTP {
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model BookOwnershipAudit {
+  id            String   @id @default(cuid())
+  bookId        String
+  fromOwnerId   String? // Previous owner (null if initial assignment)
+  toOwnerId     String // New owner
+  performedById String // User who performed the ownership change
+  notes         String? // Optional notes about the ownership change
+  createdAt     DateTime @default(now())
+
+  book        Book  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  fromOwner   User? @relation("PreviousOwner", fields: [fromOwnerId], references: [id], onDelete: SetNull)
+  toOwner     User  @relation("NewOwner", fields: [toOwnerId], references: [id], onDelete: Cascade)
+  performedBy User  @relation("AuditPerformer", fields: [performedById], references: [id], onDelete: Cascade)
 }
 
 enum UserRole {

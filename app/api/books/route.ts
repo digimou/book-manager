@@ -90,6 +90,7 @@ export async function GET(request: NextRequest) {
       skip,
       take: limit,
       include: {
+        owner: { select: { id: true, name: true, email: true } },
         bookIssues: {
           where: { status: ISSUE_STATUS.ISSUED },
           include: { user: { select: { name: true, email: true } } },
@@ -120,9 +121,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: ERROR_MESSAGES.UNAUTHORIZED },
+        { status: 401 }
+      );
+    }
+
+    const userRole = (session.user as unknown as { role: string }).role;
+
     if (
-      !session?.user ||
-      (session.user as unknown as { role: string }).role !== USER_ROLES.ADMIN
+      ![USER_ROLES.ADMIN, USER_ROLES.BOOKKEEPER].includes(
+        userRole as "ADMIN" | "BOOKKEEPER"
+      )
     ) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.UNAUTHORIZED },
@@ -144,12 +155,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine the owner - if admin creates, assign to first bookkeeper, otherwise use the creator
+    let ownerId: string;
+    if (userRole === USER_ROLES.ADMIN) {
+      const firstBookkeeper = await db.user.findFirst({
+        where: { role: USER_ROLES.BOOKKEEPER },
+      });
+      if (!firstBookkeeper) {
+        return NextResponse.json(
+          { error: "No bookkeeper found to assign ownership" },
+          { status: 400 }
+        );
+      }
+      ownerId = firstBookkeeper.id;
+    } else {
+      ownerId = session.user.id as string;
+    }
+
     const book = await db.book.create({
       data: {
         ...validatedData,
         rfidTag: generateRFIDTag(),
         publicationDate: new Date(validatedData.publicationDate),
         availableCopies: validatedData.totalCopies,
+        ownerId,
+      },
+    });
+
+    // Create initial ownership audit record
+    await db.bookOwnershipAudit.create({
+      data: {
+        bookId: book.id,
+        fromOwnerId: null, // Initial assignment
+        toOwnerId: ownerId,
+        performedById: session.user.id as string,
+        notes: "Initial book creation and ownership assignment",
       },
     });
 
@@ -162,6 +202,110 @@ export async function POST(request: NextRequest) {
       );
     }
     console.error("Error creating book:", error);
+    return NextResponse.json(
+      { error: ERROR_MESSAGES.INTERNAL_SERVER_ERROR },
+      { status: 500 }
+    );
+  }
+}
+
+// Transfer book ownership
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: ERROR_MESSAGES.UNAUTHORIZED },
+        { status: 401 }
+      );
+    }
+
+    const userRole = (session.user as unknown as { role: string }).role;
+
+    if (
+      ![USER_ROLES.ADMIN, USER_ROLES.BOOKKEEPER].includes(
+        userRole as "ADMIN" | "BOOKKEEPER"
+      )
+    ) {
+      return NextResponse.json(
+        { error: ERROR_MESSAGES.UNAUTHORIZED },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { bookId, newOwnerId, notes } = body;
+
+    if (!bookId || !newOwnerId) {
+      return NextResponse.json(
+        { error: "Book ID and new owner ID are required" },
+        { status: 400 }
+      );
+    }
+
+    // Get the book with current owner
+    const book = await db.book.findUnique({
+      where: { id: bookId },
+      include: { owner: true },
+    });
+
+    if (!book) {
+      return NextResponse.json(
+        { error: ERROR_MESSAGES.BOOK_NOT_FOUND },
+        { status: 404 }
+      );
+    }
+
+    // Check if new owner is a bookkeeper
+    const newOwner = await db.user.findUnique({
+      where: { id: newOwnerId, role: USER_ROLES.BOOKKEEPER },
+    });
+
+    if (!newOwner) {
+      return NextResponse.json(
+        { error: "New owner must be a bookkeeper" },
+        { status: 400 }
+      );
+    }
+
+    // Check authorization - only current owner or admin can transfer ownership
+    const isOwner = book.ownerId === session.user.id;
+    const isAdmin = userRole === USER_ROLES.ADMIN;
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json(
+        { error: "Only the current owner or admin can transfer ownership" },
+        { status: 403 }
+      );
+    }
+
+    // Update book ownership
+    await db.book.update({
+      where: { id: bookId },
+      data: { ownerId: newOwnerId },
+    });
+
+    // Create ownership audit record
+    await db.bookOwnershipAudit.create({
+      data: {
+        bookId,
+        fromOwnerId: book.ownerId,
+        toOwnerId: newOwnerId,
+        performedById: session.user.id as string,
+        notes:
+          notes || `Ownership transferred by ${isAdmin ? "admin" : "owner"}`,
+      },
+    });
+
+    return NextResponse.json({
+      message: "Book ownership transferred successfully",
+      book: await db.book.findUnique({
+        where: { id: bookId },
+        include: { owner: true },
+      }),
+    });
+  } catch (error) {
+    console.error("Error transferring book ownership:", error);
     return NextResponse.json(
       { error: ERROR_MESSAGES.INTERNAL_SERVER_ERROR },
       { status: 500 }

@@ -93,6 +93,7 @@ async function main() {
         totalCopies: 3,
         availableCopies: 2,
         status: BOOK_STATUS.AVAILABLE,
+        ownerId: bookkeeper.id, // Bookkeeper owns this book
       },
     }),
     prisma.book.create({
@@ -108,6 +109,7 @@ async function main() {
         totalCopies: 2,
         availableCopies: 1,
         status: BOOK_STATUS.AVAILABLE,
+        ownerId: bookkeeper.id, // Bookkeeper owns this book
       },
     }),
     prisma.book.create({
@@ -123,6 +125,7 @@ async function main() {
         totalCopies: 4,
         availableCopies: 3,
         status: BOOK_STATUS.AVAILABLE,
+        ownerId: bookkeeper.id, // Bookkeeper owns this book
       },
     }),
     prisma.book.create({
@@ -138,6 +141,7 @@ async function main() {
         totalCopies: 2,
         availableCopies: 0,
         status: BOOK_STATUS.ISSUED,
+        ownerId: bookkeeper.id, // Bookkeeper owns this book
       },
     }),
     prisma.book.create({
@@ -153,6 +157,7 @@ async function main() {
         totalCopies: 1,
         availableCopies: 1,
         status: BOOK_STATUS.AVAILABLE,
+        ownerId: bookkeeper.id, // Bookkeeper owns this book
       },
     }),
     prisma.book.create({
@@ -167,6 +172,7 @@ async function main() {
         totalCopies: 3,
         availableCopies: 2,
         status: BOOK_STATUS.AVAILABLE,
+        ownerId: bookkeeper.id, // Bookkeeper owns this book
       },
     }),
     prisma.book.create({
@@ -182,6 +188,7 @@ async function main() {
         totalCopies: 2,
         availableCopies: 1,
         status: BOOK_STATUS.AVAILABLE,
+        ownerId: bookkeeper.id, // Bookkeeper owns this book
       },
     }),
     prisma.book.create({
@@ -197,6 +204,7 @@ async function main() {
         totalCopies: 3,
         availableCopies: 2,
         status: BOOK_STATUS.AVAILABLE,
+        ownerId: bookkeeper.id, // Bookkeeper owns this book
       },
     }),
   ]);
