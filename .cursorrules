@@ -6,6 +6,7 @@ This is a Next.js 15 application with TypeScript, Tailwind CSS, Prisma, and mode
 ## Code Style & Conventions
 Always use the latest version of dependencies
 Always use the constants rather than duplicating the value in multiple places
+Always user DRY and single reponsibility priciple.
 
 ### TypeScript
 - Use strict TypeScript with proper type annotations

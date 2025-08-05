@@ -1,63 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { z } from "zod";
 import {
-  BOOK_GENRES,
   USER_ROLES,
-  ISSUE_STATUS,
   ERROR_MESSAGES,
-  VALIDATION,
+  ISSUE_STATUS,
   SUCCESS_MESSAGES,
 } from "@/lib/constants";
-import { BookUpdateData } from "@/lib/types";
-
-const updateBookSchema = z.object({
-  title: z
-    .string()
-    .min(VALIDATION.MIN_NAME_LENGTH, "Title is required")
-    .optional(),
-  author: z
-    .string()
-    .min(VALIDATION.MIN_NAME_LENGTH, "Author is required")
-    .optional(),
-  isbn: z
-    .string()
-    .min(VALIDATION.MIN_NAME_LENGTH, "ISBN is required")
-    .optional(),
-  genre: z
-    .enum([
-      BOOK_GENRES.FICTION,
-      BOOK_GENRES.NON_FICTION,
-      BOOK_GENRES.SCIENCE_FICTION,
-      BOOK_GENRES.MYSTERY,
-      BOOK_GENRES.ROMANCE,
-      BOOK_GENRES.THRILLER,
-      BOOK_GENRES.BIOGRAPHY,
-      BOOK_GENRES.HISTORY,
-      BOOK_GENRES.SCIENCE,
-      BOOK_GENRES.TECHNOLOGY,
-      BOOK_GENRES.PHILOSOPHY,
-      BOOK_GENRES.RELIGION,
-      BOOK_GENRES.ART,
-      BOOK_GENRES.MUSIC,
-      BOOK_GENRES.TRAVEL,
-      BOOK_GENRES.COOKING,
-      BOOK_GENRES.HEALTH,
-      BOOK_GENRES.EDUCATION,
-      BOOK_GENRES.CHILDREN,
-      BOOK_GENRES.YOUNG_ADULT,
-      BOOK_GENRES.OTHER,
-    ])
-    .optional(),
-  publicationDate: z.string().datetime().optional(),
-  description: z.string().optional(),
-  coverImage: z.string().optional(),
-  totalCopies: z
-    .number()
-    .min(VALIDATION.MIN_BOOK_COPIES, "At least 1 copy is required")
-    .optional(),
-});
+import { updateBookSchema } from "@/lib/schemas";
 
 export async function GET(
   request: NextRequest,
@@ -65,7 +16,7 @@ export async function GET(
 ) {
   try {
     const session = await auth();
-    if (!session) {
+    if (!session?.user) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.UNAUTHORIZED },
         { status: 401 }
@@ -76,10 +27,9 @@ export async function GET(
     const book = await db.book.findUnique({
       where: { id },
       include: {
+        owner: { select: { id: true, name: true, email: true } },
         bookIssues: {
-          include: {
-            user: { select: { name: true, email: true } },
-          },
+          include: { user: { select: { name: true, email: true } } },
         },
       },
     });
@@ -107,7 +57,7 @@ export async function PUT(
 ) {
   try {
     const session = await auth();
-    if (!session?.user || (session.user as unknown as { role: string }).role !== USER_ROLES.ADMIN) {
+    if (!session?.user) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.UNAUTHORIZED },
         { status: 401 }
@@ -120,12 +70,25 @@ export async function PUT(
 
     const existingBook = await db.book.findUnique({
       where: { id },
+      include: { owner: true },
     });
 
     if (!existingBook) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.BOOK_NOT_FOUND },
         { status: 404 }
+      );
+    }
+
+    // Check permissions: only owner or admin can edit
+    const userRole = (session.user as unknown as { role: string }).role;
+    const isOwner = existingBook.ownerId === session.user.id;
+    const isAdmin = userRole === USER_ROLES.ADMIN;
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json(
+        { error: "Only the book owner or administrator can edit this book" },
+        { status: 403 }
       );
     }
 
@@ -142,14 +105,23 @@ export async function PUT(
       }
     }
 
-    const updateData: BookUpdateData = { 
+    // Convert date format if provided
+    let publicationDate = undefined;
+    if (validatedData.publicationDate) {
+      publicationDate = new Date(validatedData.publicationDate + "T00:00:00");
+    }
+
+    const updateData = {
       ...validatedData,
-      publicationDate: validatedData.publicationDate ? new Date(validatedData.publicationDate) : undefined
+      publicationDate,
     };
 
     const book = await db.book.update({
       where: { id },
       data: updateData,
+      include: {
+        owner: { select: { id: true, name: true, email: true } },
+      },
     });
 
     return NextResponse.json({ book });
@@ -174,7 +146,10 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    if (!session?.user || (session.user as unknown as { role: string }).role !== USER_ROLES.ADMIN) {
+    if (
+      !session?.user ||
+      (session.user as unknown as { role: string }).role !== USER_ROLES.ADMIN
+    ) {
       return NextResponse.json(
         { error: ERROR_MESSAGES.UNAUTHORIZED },
         { status: 401 }

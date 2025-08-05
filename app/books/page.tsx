@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBooks } from "@/lib/hooks/use-books";
 import { USER_ROLES } from "@/lib/constants";
 import { AddBookModal } from "@/components/books/add-book-modal";
+import { EditBookModal } from "@/components/books/edit-book-modal";
+import { TransferOwnershipModal } from "@/components/books/transfer-ownership-modal";
 
 export default function BooksPage() {
   const { data: session, status } = useSession();
@@ -39,6 +41,7 @@ export default function BooksPage() {
   const isAdmin = userRole === USER_ROLES.ADMIN;
   const isBookkeeper = userRole === USER_ROLES.BOOKKEEPER;
   const canAddBooks = isAdmin || isBookkeeper;
+  const currentUserId = session.user.id;
 
   if (isLoading) {
     return (
@@ -94,41 +97,91 @@ export default function BooksPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {books.map((book) => (
-            <Card key={book.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="text-lg">{book.title}</CardTitle>
-                <p className="text-sm text-gray-600">by {book.author}</p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="text-sm">
-                    <span className="font-medium">ISBN:</span> {book.isbn}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Genre:</span> {book.genre}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Status:</span>{" "}
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        book.status === "AVAILABLE"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {book.status}
-                    </span>
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Available:</span>{" "}
-                    {book.availableCopies} of {book.totalCopies}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {books.map((book) => {
+            const isOwner = book.ownerId === currentUserId;
+            const canEdit = isOwner || isAdmin; // Owner or admin can edit
+            const canTransfer = isOwner || isAdmin; // Owner or admin can transfer
+
+            return (
+              <Card key={book.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-base leading-tight truncate">
+                        {book.title}
+                      </CardTitle>
+                      <p className="text-sm text-gray-600 truncate">
+                        by {book.author}
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      {canEdit && (
+                        <EditBookModal
+                          book={book}
+                          onSuccess={() => refetch()}
+                        />
+                      )}
+                      {canTransfer && (
+                        <TransferOwnershipModal
+                          book={book}
+                          onSuccess={() => refetch()}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-700">ISBN:</span>
+                      <span className="text-gray-600 truncate">
+                        {book.isbn}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-700">RFID:</span>
+                      <span className="text-gray-600 font-mono text-xs truncate">
+                        {book.rfidTag}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-700">Genre:</span>
+                      <span className="text-gray-600">{book.genre}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-700">Status:</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs ${
+                          book.status === "AVAILABLE"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {book.status}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-700">Copies:</span>
+                      <span className="text-gray-600">
+                        {book.availableCopies}/{book.totalCopies}
+                      </span>
+                    </div>
+                    {book.owner && (
+                      <div className="flex justify-between">
+                        <span className="font-medium text-gray-700">
+                          Owner:
+                        </span>
+                        <span className="text-gray-600 truncate">
+                          {book.owner.name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

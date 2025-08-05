@@ -113,7 +113,7 @@ export default function UsersPage() {
     },
   });
 
-  // Check if user is admin
+  // Check if user is admin or bookkeeper
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -128,7 +128,10 @@ export default function UsersPage() {
   }
 
   const userRole = (session.user as { role: string }).role;
-  if (userRole !== USER_ROLES.ADMIN) {
+  const isAdmin = userRole === USER_ROLES.ADMIN;
+  const isBookkeeper = userRole === USER_ROLES.BOOKKEEPER;
+
+  if (!isAdmin && !isBookkeeper) {
     router.push("/dashboard");
     return null;
   }
@@ -232,134 +235,136 @@ export default function UsersPage() {
           <div className="flex items-center gap-3">
             <Users className="h-8 w-8 text-blue-600" />
             <h1 className="text-3xl font-bold text-gray-900">
-              User Management
+              {isAdmin ? "User Management" : "Bookkeeper Directory"}
             </h1>
           </div>
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add User
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <UserPlus className="h-5 w-5" />
-                  Create New User
-                </DialogTitle>
-                <DialogDescription>
-                  Add a new user to the system. Only administrators can create
-                  users.
-                </DialogDescription>
-              </DialogHeader>
-              <form
-                onSubmit={createForm.handleSubmit(handleCreateUser)}
-                className="space-y-4"
-              >
-                <div>
-                  <label
-                    htmlFor="name"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Name
-                  </label>
-                  <Input
-                    id="name"
-                    type="text"
-                    {...createForm.register("name")}
-                    className="mt-1"
-                    placeholder="Enter user's full name"
-                  />
-                  {createForm.formState.errors.name && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {createForm.formState.errors.name.message}
-                    </p>
-                  )}
-                </div>
+          {isAdmin && (
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <DialogTrigger asChild>
+                <Button className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add User
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <UserPlus className="h-5 w-5" />
+                    Create New User
+                  </DialogTitle>
+                  <DialogDescription>
+                    Add a new user to the system. Only administrators can create
+                    users.
+                  </DialogDescription>
+                </DialogHeader>
+                <form
+                  onSubmit={createForm.handleSubmit(handleCreateUser)}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label
+                      htmlFor="name"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Name
+                    </label>
+                    <Input
+                      id="name"
+                      type="text"
+                      {...createForm.register("name")}
+                      className="mt-1"
+                      placeholder="Enter user's full name"
+                    />
+                    {createForm.formState.errors.name && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {createForm.formState.errors.name.message}
+                      </p>
+                    )}
+                  </div>
 
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Email
-                  </label>
-                  <Input
-                    id="email"
-                    type="email"
-                    {...createForm.register("email")}
-                    className="mt-1"
-                    placeholder="Enter user's email address"
-                  />
-                  {createForm.formState.errors.email && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {createForm.formState.errors.email.message}
-                    </p>
-                  )}
-                </div>
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Email
+                    </label>
+                    <Input
+                      id="email"
+                      type="email"
+                      {...createForm.register("email")}
+                      className="mt-1"
+                      placeholder="Enter user's email address"
+                    />
+                    {createForm.formState.errors.email && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {createForm.formState.errors.email.message}
+                      </p>
+                    )}
+                  </div>
 
-                <div>
-                  <label
-                    htmlFor="password"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Password
-                  </label>
-                  <Input
-                    id="password"
-                    type="password"
-                    {...createForm.register("password")}
-                    className="mt-1"
-                    placeholder="Enter initial password"
-                  />
-                  {createForm.formState.errors.password && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {createForm.formState.errors.password.message}
-                    </p>
-                  )}
-                </div>
+                  <div>
+                    <label
+                      htmlFor="password"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Password
+                    </label>
+                    <Input
+                      id="password"
+                      type="password"
+                      {...createForm.register("password")}
+                      className="mt-1"
+                      placeholder="Enter initial password"
+                    />
+                    {createForm.formState.errors.password && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {createForm.formState.errors.password.message}
+                      </p>
+                    )}
+                  </div>
 
-                <div>
-                  <label
-                    htmlFor="role"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Role
-                  </label>
-                  <select
-                    id="role"
-                    {...createForm.register("role")}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  >
-                    <option value={USER_ROLES.USER}>User</option>
-                    <option value={USER_ROLES.BOOKKEEPER}>Bookkeeper</option>
-                    <option value={USER_ROLES.ADMIN}>Admin</option>
-                  </select>
-                  {createForm.formState.errors.role && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {createForm.formState.errors.role.message}
-                    </p>
-                  )}
-                </div>
+                  <div>
+                    <label
+                      htmlFor="role"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Role
+                    </label>
+                    <select
+                      id="role"
+                      {...createForm.register("role")}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      <option value={USER_ROLES.USER}>User</option>
+                      <option value={USER_ROLES.BOOKKEEPER}>Bookkeeper</option>
+                      <option value={USER_ROLES.ADMIN}>Admin</option>
+                    </select>
+                    {createForm.formState.errors.role && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {createForm.formState.errors.role.message}
+                      </p>
+                    )}
+                  </div>
 
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsModalOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={registerMutation.isPending}>
-                    {registerMutation.isPending
-                      ? "Creating user..."
-                      : "Create User"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsModalOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={registerMutation.isPending}>
+                      {registerMutation.isPending
+                        ? "Creating user..."
+                        : "Create User"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <Alert className="mb-6">
@@ -408,24 +413,26 @@ export default function UsersPage() {
                       <Badge variant={getRoleBadgeVariant(user.role)}>
                         {user.role}
                       </Badge>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditUser(user)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleChangePassword(user)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Key className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditUser(user)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleChangePassword(user)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Key className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -455,7 +462,9 @@ export default function UsersPage() {
                   No users found
                 </h3>
                 <p className="text-gray-600">
-                  Get started by creating your first user.
+                  {isAdmin
+                    ? "Get started by creating your first user."
+                    : "No other bookkeepers found in the system."}
                 </p>
               </div>
             </CardContent>

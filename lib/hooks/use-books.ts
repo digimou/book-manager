@@ -15,8 +15,14 @@ export interface Book {
   totalCopies: number;
   availableCopies: number;
   status: string;
+  ownerId: string;
   createdAt: string;
   updatedAt: string;
+  owner?: {
+    id: string;
+    name: string;
+    email: string;
+  };
   bookIssues: BookIssue[];
 }
 
