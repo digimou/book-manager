@@ -1,0 +1,292 @@
+# Cursor Rules for Next.js Development
+
+## Project Overview
+This is a Next.js 15 application with TypeScript, Tailwind CSS, Prisma, and modern React patterns. The project uses the App Router architecture with parallel routes.
+
+## Code Style & Conventions
+Always use the latest version of dependencies
+Always use the constants rather than duplicating the value in multiple places
+
+### TypeScript
+- Use strict TypeScript with proper type annotations
+- Prefer interfaces over types for object shapes
+- Use generic types when appropriate
+- Always type function parameters and return values
+- Use utility types like `Partial<T>`, `Pick<T, K>`, `Omit<T, K>`
+- Use `as const` for literal types when needed
+
+### React & Next.js
+- Use functional components with hooks
+- Prefer `useState`, `useEffect`, `useCallback`, `useMemo` appropriately
+- Use Server Components by default, Client Components only when needed
+- Mark client components with `"use client"` directive
+- Use Next.js Image component for optimized images
+- Use Next.js Link component for navigation
+- Implement proper error boundaries
+- Use loading.tsx and error.tsx for route segments
+- Usse TanStack query for for data fetching and mutation
+
+UI and Styling
+  - Use Shadcn UI and Radix UI for component foundations.
+  - Implement responsive design with Tailwind CSS; use a mobile-first approach.
+  - Use Tailwind for utility classes and rapid prototyping.
+  - Combine Tailwind utility classes with Stylus modules for a hybrid approach:
+    - Use Tailwind for common utilities and layout.
+    - Use Stylus modules for complex, component-specific styles.
+    - Never use the @apply directive
+
+Stylus Best Practices
+  - Use variables for colors, fonts, and other repeated values.
+  - Create mixins for commonly used style patterns.
+  - Utilize Stylus' parent selector (&) for nesting and pseudo-classes.
+  - Keep specificity low by avoiding deep nesting.
+
+Forms and Validation
+  - Use controlled components for form inputs.
+  - Implement form validation (client-side and server-side).
+  - Consider using libraries like react-hook-form for complex forms.
+  - Use Zod or Joi for schema validation.
+
+
+  Security
+  - Sanitize user inputs to prevent XSS attacks.
+  - Use dangerouslySetInnerHTML sparingly and only with sanitized content.
+  
+### File Structure & Naming
+- Use kebab-case for file names: `user-profile.tsx`
+- Use PascalCase for component names: `UserProfile`
+- Use camelCase for variables and functions: `getUserData`
+- Use UPPER_SNAKE_CASE for constants: `API_ENDPOINTS`
+- Group related files in directories
+- Use index.ts files for clean imports
+
+### Component Patterns
+```typescript
+// Server Component (default)
+interface UserProfileProps {
+  userId: string;
+  className?: string;
+}
+
+export default async function UserProfile({ userId, className }: UserProfileProps) {
+  const user = await getUser(userId);
+  
+  return (
+    <div className={cn("user-profile", className)}>
+      {/* Component content */}
+    </div>
+  );
+}
+
+// Client Component (when needed)
+"use client";
+
+import { useState, useCallback } from "react";
+
+interface UserFormProps {
+  onSubmit: (data: UserData) => void;
+}
+
+export default function UserForm({ onSubmit }: UserFormProps) {
+  const [formData, setFormData] = useState<UserData>({});
+  
+  const handleSubmit = useCallback((data: UserData) => {
+    onSubmit(data);
+  }, [onSubmit]);
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* Form content */}
+    </form>
+  );
+}
+```
+
+### Styling with Tailwind CSS
+- Use utility classes for styling
+- Create reusable component classes with `@apply`
+- Use `cn()` utility for conditional classes
+- Follow mobile-first responsive design
+- Use semantic color names from your design system
+- Prefer Tailwind utilities over custom CSS
+
+### Database & Prisma
+- Use Prisma Client for database operations
+- Create type-safe database queries
+- Use transactions for complex operations
+- Implement proper error handling for database operations
+- Use Prisma's relation queries efficiently
+- Keep database operations in server components or API routes
+- Use neon tech postgres database
+
+### Form Handling
+- Use React Hook Form with Zod validation
+- Create reusable form components
+- Implement proper error handling and validation
+- Use controlled components for complex forms
+- Provide clear user feedback for form states
+
+### API Routes
+- Use Next.js API routes for backend functionality
+- Implement proper error handling and status codes
+- Use Zod for request/response validation
+- Return consistent JSON responses
+- Handle authentication and authorization properly
+
+### Performance
+- Use React.memo for expensive components
+- Implement proper loading states
+- Use Next.js Image optimization
+- Implement proper caching strategies
+- Use Suspense boundaries appropriately
+
+### Error Handling
+- Implement proper error boundaries
+- Use try-catch blocks for async operations
+- Provide meaningful error messages
+- Log errors appropriately
+- Handle network errors gracefully
+
+### Testing
+- Write unit tests for utility functions
+- Test component behavior with user interactions
+- Mock external dependencies
+- Test error scenarios
+- Use proper test data and fixtures
+
+### Security
+- Validate all user inputs
+- Use proper authentication and authorization
+- Sanitize data before database operations
+- Use environment variables for sensitive data
+- Implement proper CORS policies
+
+### Accessibility
+- Use semantic HTML elements
+- Provide proper ARIA labels
+- Ensure keyboard navigation works
+- Test with screen readers
+- Maintain proper color contrast
+
+### Code Organization
+- Keep components small and focused
+- Extract reusable logic into custom hooks
+- Use barrel exports for clean imports
+- Group related functionality together
+- Document complex business logic
+
+### Git & Version Control
+- Write descriptive commit messages
+- Use conventional commit format
+- Keep commits atomic and focused
+- Use feature branches for new development
+- Review code before merging
+
+## Common Patterns
+
+### Custom Hooks
+```typescript
+export function useLocalStorage<T>(key: string, initialValue: T) {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      return initialValue;
+    }
+  });
+
+  const setValue = (value: T | ((val: T) => T)) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  return [storedValue, setValue] as const;
+}
+```
+
+### API Route Pattern
+```typescript
+// app/api/users/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const userSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+});
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const validatedData = userSchema.parse(body);
+    
+    // Database operation
+    const user = await createUser(validatedData);
+    
+    return NextResponse.json({ user }, { status: 201 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ errors: error.errors }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+```
+
+### Form Component Pattern
+```typescript
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+const formSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+type FormData = z.infer<typeof formSchema>;
+
+export function LoginForm() {
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+  });
+
+  const onSubmit = async (data: FormData) => {
+    // Handle form submission
+  };
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      {/* Form fields */}
+    </form>
+  );
+}
+```
+
+## Dependencies & Tools
+- Next.js 15 with App Router
+- TypeScript for type safety
+- Tailwind CSS for styling
+- Prisma for database operations
+- React Hook Form + Zod for forms
+- HeroUI and Radix UI for components
+- ESLint for code quality
+- pnpm for package management
+
+## Development Workflow
+1. Create feature branches from main
+2. Write code following these conventions
+3. Test thoroughly before committing
+4. Use proper commit messages
+5. Create pull requests for review
+6. Merge only after approval
+
+Remember: Write code that is readable, maintainable, and follows the established patterns in this codebase. 
